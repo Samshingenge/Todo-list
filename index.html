@@ -57,6 +57,37 @@
             margin-left: auto;
             background-color: #ff4444;
         }
+
+        /* Animation styles */
+        @keyframes dropIn {
+            0% {
+                transform: translateY(-100vh) rotateZ(180deg);
+                opacity: 0;
+            }
+            80% {
+                transform: translateY(10px) rotateZ(-10deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(0) rotateZ(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        .letter {
+            display: inline-block;
+            animation: dropIn 0.6s ease-out forwards,
+                       bounce 0.4s ease-in-out 0.6s;
+        }
+
+        .todo-item {
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -115,17 +146,27 @@
             localStorage.setItem('todos', JSON.stringify(todos));
         }
 
+        // Render todos with letter animations
         function renderTodos() {
             const todoList = document.getElementById('todoList');
             todoList.innerHTML = '';
 
             todos.forEach(todo => {
                 const li = document.createElement('li');
+                li.className = 'todo-item';
+                
+                // Split text into individual letters with animation
+                const animatedText = todo.text.split('').map((char, index) => {
+                    const delay = index * 0.05;
+                    return `<span class="letter" 
+                               style="animation-delay: ${delay}s">${char === ' ' ? '&nbsp;' : char}</span>`;
+                }).join('');
+
                 li.innerHTML = `
                     <input type="checkbox" 
                            ${todo.completed ? 'checked' : ''} 
                            onchange="toggleTodo(${todo.id})">
-                    <span class="${todo.completed ? 'completed' : ''}">${todo.text}</span>
+                    <span class="${todo.completed ? 'completed' : ''}">${animatedText}</span>
                     <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
                 `;
                 todoList.appendChild(li);

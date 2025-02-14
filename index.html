@@ -18,9 +18,16 @@
         }
         .input-group {
             display: flex;
-            gap: 10px;
+            gap: 0;
             margin-bottom: 20px;
         }
+
+        .input-group button {
+        display: inline-block; /* Ensure buttons are inline */
+        margin: 0; /* Remove margin */
+        padding: 8px 16px; /* Ensure consistent padding */
+    }
+
         #todoInput {
             flex: 1;
             padding: 8px;
@@ -53,11 +60,29 @@
             text-decoration: line-through;
             opacity: 0.7;
         }
+
+        .btn{
+          margin-left: auto;  
+        }
         .delete-btn {
-            margin-left: auto;
             background-color: #ff4444;
         }
 
+        .edit-btn {
+            margin: 0;
+            background-color: #ffa500;
+   
+        }
+        .timestamp {
+            font-size: 0.8em;
+            color: #666;
+            margin-left: 10px;
+        }
+        .edit-input {
+            flex: 1;
+            padding: 5px;
+            margin:3px;
+        }
         /* Animation styles */
         @keyframes dropIn {
             0% {
@@ -73,51 +98,45 @@
                 opacity: 1;
             }
         }
-
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-5px); }
         }
-
         .letter {
             display: inline-block;
             animation: dropIn 0.6s ease-out forwards,
                        bounce 0.4s ease-in-out 0.6s;
         }
-
         .todo-item {
             overflow: hidden;
         }
-
         /* For tablets and larger devices */
-@media (min-width: 768px) {
-    body {
-        max-width: 700px;
-    }
-}
-
-/* For mobile devices */
-@media (max-width: 767px) {
-    body {
-        padding: 10px;
-    }
-    .input-group {
-        flex-direction: column;
-        gap: 5px;
-    }
-    button {
-        width: 100%;
-    }
-    li {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-    .delete-btn {
-        width: 100%;
-        margin-top: 10px;
-    }
-}
-
+        @media (min-width: 768px) {
+            body {
+                max-width: 700px;
+            }
+        }
+        /* For mobile devices */
+        @media (max-width: 767px) {
+            body {
+                padding: 10px;
+            }
+            .input-group {
+                flex-direction: column;
+                gap: 5px;
+            }
+            button {
+                width: 100%;
+            }
+            li {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .delete-btn {
+                width: 100%;
+                margin-top: 10px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -129,13 +148,9 @@
         </div>
         <ul id="todoList"></ul>
     </div>
-
     <script>
-        // Initialize todos array from localStorage or empty array
         let todos = JSON.parse(localStorage.getItem('todos')) || [];
-
-        // Initial render
-        renderTodos();
+        let editingId = null;
 
         function addTodo() {
             const input = document.getElementById('todoInput');
@@ -145,7 +160,9 @@
                 const todo = {
                     id: Date.now(),
                     text: text,
-                    completed: false
+                    completed: false,
+                    created: new Date().toISOString(),
+                    modified: new Date().toISOString()
                 };
                 
                 todos.push(todo);
@@ -153,6 +170,34 @@
                 renderTodos();
                 input.value = '';
             }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        }
+
+        function startEdit(id) {
+            editingId = id;
+            renderTodos();
+        }
+
+        function saveEdit(id, newText) {
+            if (!newText) return;
+            
+            todos = todos.map(todo => {
+                if (todo.id === id) {
+                    return { 
+                        ...todo, 
+                        text: newText,
+                        modified: new Date().toISOString()
+                    };
+                }
+                return todo;
+            });
+            editingId = null;
+            saveTodos();
+            renderTodos();
         }
 
         function toggleTodo(id) {
@@ -176,7 +221,6 @@
             localStorage.setItem('todos', JSON.stringify(todos));
         }
 
-        // Render todos with letter animations
         function renderTodos() {
             const todoList = document.getElementById('todoList');
             todoList.innerHTML = '';
@@ -185,30 +229,58 @@
                 const li = document.createElement('li');
                 li.className = 'todo-item';
                 
-                // Split text into individual letters with animation
-                const animatedText = todo.text.split('').map((char, index) => {
-                    const delay = index * 0.05;
-                    return `<span class="letter" 
-                               style="animation-delay: ${delay}s">${char === ' ' ? '&nbsp;' : char}</span>`;
-                }).join('');
+                if (todo.id === editingId) {
+                    // Edit mode
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'edit-input';
+                    input.value = todo.text;
+                    
+                    const saveButton = document.createElement('button');
+                    saveButton.textContent = 'Save';
+                    saveButton.onclick = () => saveEdit(todo.id, input.value.trim());
 
-                li.innerHTML = `
-                    <input type="checkbox" 
-                           ${todo.completed ? 'checked' : ''} 
-                           onchange="toggleTodo(${todo.id})">
-                    <span class="${todo.completed ? 'completed' : ''}">${animatedText}</span>
-                    <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
-                `;
+                    li.append(
+                        input,
+                        saveButton,
+                        `Created: ${formatDate(todo.created)}`
+                    );
+                } else {
+                    // Display mode
+                    const animatedText = todo.text.split('').map((char, index) => {
+                        const delay = index * 0.05;
+                        return `<span class="letter" 
+                                   style="animation-delay: ${delay}s">${char === ' ' ? '&nbsp;' : char}</span>`;
+                    }).join('');
+
+                    li.innerHTML = `
+                        <input type="checkbox" 
+                               ${todo.completed ? 'checked' : ''} 
+                               onchange="toggleTodo(${todo.id})">
+                        <span class="${todo.completed ? 'completed' : ''}">
+                            ${animatedText}
+                            <div class="timestamp">
+                                Created: ${formatDate(todo.created)}<br>
+                                Modified: ${formatDate(todo.modified)}
+                            </div>
+                        </span>
+                        <div class="btn">
+                           <button class="edit-btn" onclick="startEdit(${todo.id})">Edit</button>
+                           <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button> 
+                        </div>
+                        
+                    `;
+                }
                 todoList.appendChild(li);
             });
         }
 
-        // Add todo when Enter key is pressed
         document.getElementById('todoInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                addTodo();
-            }
+            if (e.key === 'Enter') addTodo();
         });
+
+        // Initial render
+        renderTodos();
     </script>
 </body>
 </html>
